@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("ADMIN") // ADMIN, STAFF
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Table {
+  id        String   @id @default(cuid())
+  number    Int      @unique
+  qrCode    String?  // URL or base64
+  status    String   @default("AVAILABLE") // AVAILABLE, OCCUPIED
+  sessions  TableSession[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TableSession {
+  id         String   @id @default(cuid())
+  tableId    String
+  table      Table    @relation(fields: [tableId], references: [id])
+  uniqueCode String   @unique // Code for users to join
+  status     String   @default("OPEN") // OPEN, CLOSED
+  paymentRequested Boolean @default(false)
+  helpRequested    Boolean @default(false)
+  orders     Order[]
+  customers  Customer[]
+  createdAt  DateTime @default(now())
+  endedAt    DateTime?
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  sessionId String
+  session   TableSession @relation(fields: [sessionId], references: [id])
+  orders    Order[]
+  joinedAt  DateTime @default(now())
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String
+  products Product[]
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  image       String?
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  orderItems  OrderItem[]
+  active      Boolean  @default(true)
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  sessionId  String
+  session    TableSession @relation(fields: [sessionId], references: [id])
+  customerId String?
+  customer   Customer?    @relation(fields: [customerId], references: [id])
+  status     String      @default("PENDING") // PENDING, PREPARING, DELIVERED, PAID
+  total      Float       @default(0)
+  items      OrderItem[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float   // Price at time of order
+}
